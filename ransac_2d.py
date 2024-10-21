@@ -8,8 +8,8 @@ class Ransac2D:
         self.t = t
         
         self.best_inliers = []
-        self.best_m = None
-        self.best_b = None
+        self.best_c0 = None
+        self.best_c1 = None
 
     ## Sample
     def sample(self, xs, ys):
@@ -20,40 +20,58 @@ class Ransac2D:
 
         return sample_xs, sample_ys
 
+    ## Fit
+    def least_squares_fit(self, sample_xs, sample_ys):
+        # Data matrix
+        A = np.vstack([sample_xs, np.ones(len(sample_xs))]).T
+        b = sample_ys
+
+        # Least squares solution
+        c = np.linalg.lstsq(A, b, rcond=None)[0]
+
+        # print('c: ', c)
+
+        return c[0], c[1]
+
     ## Fit 
-    def linear_fit(self, sample_xs, sample_ys):
+    # def linear_fit(self, sample_xs, sample_ys):
 
-        print('sample_xs: ', sample_xs)
-        print('sample_ys: ', sample_ys)
+    #     print('sample_xs: ', sample_xs)
+    #     print('sample_ys: ', sample_ys)
 
-        ## Compute linear model parameters
-        linear = poly.Polynomial.fit(sample_xs, sample_ys, deg=1)
+    #     self.my_linear_fit(sample_xs, sample_ys)
 
-        coefs = linear.convert().coef
+    #     ## Compute linear model parameters
+    #     linear = poly.Polynomial.fit(sample_xs, sample_ys, deg=1)
 
-        b = coefs[0]
-        m = coefs[1]
+    #     coefs = linear.convert().coef
 
-        return m, b
+    #     c0 = coefs[1] # slope
+    #     c1 = coefs[0] # offset
+
+    #     # print('poly c0: ' , c0)
+    #     # print('poly c1: ' , c1)
+
+    #     return c0, c1
             
-    def compute_inliers(self, m, b, xs, ys):
+    def compute_inliers(self, c0, c1, xs, ys):
         inliers = []
         for x, y in zip(xs, ys):
-            y_hat = m * x + b
+            y_hat = c0 * x + c1
             if np.abs(y - y_hat) < self.t:
                 inliers.append((x, y))
         
         return inliers
 
-    def update_model(self, inliers, m, b):
+    def update_model(self, inliers, c0, c1):
         if len(inliers) > len(self.best_inliers):
             self.best_inliers = inliers
-            self.best_m = m
-            self.best_b = b
+            self.best_c0 = c0
+            self.best_c1 = c1
 
             ## Re-fit model using all inliers
             inliers = np.array(inliers)
-            self.best_m, self.best_b = self.linear_fit(inliers[:, 0], inliers[:, 1])
+            self.best_c0, self.best_c1 = self.least_squares_fit(inliers[:, 0], inliers[:, 1])
 
 
     def run(self, xs, ys):
@@ -63,11 +81,11 @@ class Ransac2D:
 
             ## Fit
             print('Fitting ...')
-            m, b = self.linear_fit(sample_xs, sample_ys)
+            c0, c1 = self.least_squares_fit(sample_xs, sample_ys)
 
             ## Compute inliers
-            inliers = self.compute_inliers(m, b, xs, ys)
+            inliers = self.compute_inliers(c0, c1, xs, ys)
 
             ## Update best model
             print('Updating ...')
-            self.update_model(inliers, m, b)
+            self.update_model(inliers, c0, c1)

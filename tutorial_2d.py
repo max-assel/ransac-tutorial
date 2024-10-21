@@ -2,7 +2,8 @@ from ransac_2d import Ransac2D
 import numpy as np
 import matplotlib.pyplot as plt
 
-m = 1.0 # slope
+c0 = 1.0 # slope
+c1 = 0.5 # offset
 std = 0.01 # standard deviation for Gaussian noise
 
 def generate_2d_dataset():
@@ -11,12 +12,12 @@ def generate_2d_dataset():
     xs = np.linspace(0, 1, num_points) # xs
 
     delta = np.random.normal(0, std, len(xs)) # Gaussian noise
-    ys = m * xs + delta # ys
+    ys = c0 * xs + c1 + delta # ys
     
     # Outliers
     num_outliers = 99
     xs_outliers = np.linspace(0, 1, num_outliers)
-    ys_outliers = np.random.uniform(0, 1, num_outliers)
+    ys_outliers = np.random.uniform(0, 1.5, num_outliers)
     xs = np.concatenate([xs, xs_outliers])
     ys = np.concatenate([ys, ys_outliers])
 
@@ -41,8 +42,8 @@ if __name__ == '__main__':
     ## Visualize inliers
     inliers = np.array(ransac.best_inliers)
     plt.scatter(inliers[:, 0], inliers[:, 1], color='r')
-    plt.plot(xs, ransac.best_m * xs + ransac.best_b, color='g', linestyle='--')
-    plt.plot(xs, m * xs, color='k', linestyle='-')
+    plt.plot(xs, ransac.best_c0 * xs + ransac.best_c1, color='g', linestyle='--')
+    plt.plot(xs, c0 * xs + c1, color='k', linestyle='-')
     plt.show()
 
 
