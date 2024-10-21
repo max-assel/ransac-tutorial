@@ -8,71 +8,74 @@ class Ransac3D:
         self.t = t
         
         self.best_inliers = []
-        self.best_m = None
-        self.best_b = None
+        self.best_c0 = None
+        self.best_c1 = None
+        self.best_c2 = None        
 
     ## Sample
-    def sample(self, xs, ys):
+    def sample(self, xs, ys, zs):
         ## Randomly select K points
         idx = np.random.choice(len(xs), self.K, replace=False)
         sample_xs = xs[idx]
         sample_ys = ys[idx]
+        sample_zs = zs[idx]
 
-        return sample_xs, sample_ys
+        return sample_xs, sample_ys, sample_zs
 
+    ## Fit
+    def least_squares_fit(self, sample_xs, sample_ys, sample_zs):
+        # Data matrix
+        A = np.vstack([sample_xs, sample_ys, np.ones(len(sample_xs))]).T
+        b = sample_zs
 
-    def fit_plane(points):
-        """Fit a plane to a set of 3D points.
+        # Least squares solution
+        c = np.linalg.lstsq(A, b, rcond=None)[0]
 
-        Args:
-            points (numpy.ndarray): An array of shape (n, 3) representing n 3D points.
+        # print('c: ', c)
 
-        Returns:
-            numpy.ndarray: The coefficients of the plane equation (a, b, c, d),
-                        where the equation is ax + by + cz + d = 0.
-        """
-        pass
+        return c[0], c[1], c[2]
 
-    ## Fit 
-    def planar_fit(self, sample_xs, sample_ys):
+    # ## Fit 
+    # def planar_fit(self, sample_xs, sample_ys):
 
-        print('sample_xs: ', sample_xs)
-        print('sample_ys: ', sample_ys)
+    #     print('sample_xs: ', sample_xs)
+    #     print('sample_ys: ', sample_ys)
 
-        pass
+    #     pass
             
-    def compute_inliers(self, m, b, xs, ys):
+    def compute_inliers(self, c0, c1, c2, xs, ys, zs):
         inliers = []
-        for x, y in zip(xs, ys):
-            y_hat = m * x + b
-            if np.abs(y - y_hat) < self.t:
-                inliers.append((x, y))
+        for x, y, z in zip(xs, ys, zs):
+            z_hat = c0 * x + c1 * y + c2 
+            if np.abs(z - z_hat) < self.t:
+                inliers.append((x, y, z))
         
         return inliers
 
-    def update_model(self, inliers, m, b):
+    def update_model(self, inliers, c0, c1, c2):
         if len(inliers) > len(self.best_inliers):
             self.best_inliers = inliers
-            self.best_m = m
-            self.best_b = b
+            self.best_c0 = c0
+            self.best_c1 = c1
+            self.best_c2 = c2
 
             ## Re-fit model using all inliers
             inliers = np.array(inliers)
-            self.best_m, self.best_b = self.linear_fit(inliers[:, 0], inliers[:, 1])
+            self.best_c0, self.best_c1, self.best_c2 = self.least_squares_fit(inliers[:, 0], inliers[:, 1], inliers[:, 2])
 
 
-    def run(self, xs, ys):
+    def run(self, xs, ys, zs):
         for i in range(self.N):
             ## Sample
-            sample_xs, sample_ys = self.sample(xs, ys)
+            sample_xs, sample_ys, sample_zs = self.sample(xs, ys, zs)
 
             ## Fit
             print('Fitting ...')
-            m, b = self.linear_fit(sample_xs, sample_ys)
+            c0, c1, c2 = self.least_squares_fit(sample_xs, sample_ys, sample_zs)
 
             ## Compute inliers
-            inliers = self.compute_inliers(m, b, xs, ys)
+            inliers = self.compute_inliers(c0, c1, c2, xs, ys, zs)
 
             ## Update best model
             print('Updating ...')
-            self.update_model(inliers, m, b)
+            self.update_model(inliers, c0, c1, c2)

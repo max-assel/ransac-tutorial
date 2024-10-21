@@ -4,13 +4,13 @@ import matplotlib.pyplot as plt
 
 c0 = 1.0 # slope
 c1 = 0.5 # offset
-std = 0.01 # standard deviation for Gaussian noise
 
 def generate_2d_dataset():
     # Line
     num_points = 100
     xs = np.linspace(0, 1, num_points) # xs
 
+    std = 0.01 # standard deviation for Gaussian noise
     delta = np.random.normal(0, std, len(xs)) # Gaussian noise
     ys = c0 * xs + c1 + delta # ys
     
